@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
+      crossorigin="anonymous"
+    />
+    <style>
+      #drop-area {
+        width: 100%;
+        height: 90vh;
+      }
+    </style>
+    <title>Dependency Check Convert</title>
+  </head>
+  <body>
+    <!-- As a heading -->
+    <nav class="navbar navbar-dark bg-dark">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">Dependency Check Convert</span>
+      </div>
+    </nav>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-12 mx-auto">
+          <div id="drop-area">
+            <table class="table" style="margin-top: 40px">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th style="width: 30%">Library (jar)</th>
+                  <th style="width: 70%">CVE</th>
+                </tr>
+              </thead>
+              <tbody id="dependency-demo"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./jsondrop.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/json2csv"></script>
+    <script>
+      const dropArea = new jsondrop("drop-area", {
+        onEachFile: function (file) {
+          const json = file.data;
+
+          const fields = ["dependency", "cve"];
+          const opts = { fields };
+          let obj;
+
+          let dependency = [];
+          json.dependencies.map((element, i) => {
+            if (element.vulnerabilities != undefined) {
+              const cve = element.vulnerabilities.map((element) => {
+                return element.name;
+              });
+
+              const vulnerable_dependencies = {
+                dependency: element.fileName.split(".jar")[0],
+                cve,
+              };
+
+              let result = false;
+
+              // Group Dependency Duplicate
+              dependency.forEach((depen) => {
+                if (depen.dependency === element.fileName.split(".jar")[0]) {
+                  result = depen.dependency;
+                }
+              });
+
+              if (result == false) {
+                dependency.push(vulnerable_dependencies);
+              } else {
+                // If Dependency is repeated, will update the CVE.
+                objIndex = dependency.findIndex(
+                  (obj) => obj.dependency == element.fileName.split(".jar")[0]
+                );
+                const children = dependency[objIndex].cve.concat(cve);
+                dependency[objIndex].cve = children;
+              }
+            }
+          });
+
+          const dependency_csv = dependency.map((element) => {
+            console.log(element);
+            return {
+              dependency: element.dependency + ".jar",
+              cve: element.cve.join(", "),
+            };
+          });
+
+          console.log(dependency_csv);
+
+          const dependency_table = dependency_csv.map((element, i) => {
+            return `
+             <tr>
+                  <td>${i + 1}</td>
+                  <td>${element.dependency}</td>
+                  <td>${element.cve}</td>
+                </tr>
+            `;
+          });
+
+          document.getElementById("dependency-demo").innerHTML =
+            dependency_table.join(" ");
+        },
+      });
+    </script>
+  </body>
+</html>
